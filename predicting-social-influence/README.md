@@ -255,13 +255,13 @@ Above we have feature importance from the boosting model. Diff in listed_count i
 Next, we will calculate the financial value of the model, which would be the lift in profits from using analytics versus not.
 
 ####Assume a retailer wants influencers to tweet its promotion for a product:
-* Without analytics, retailer offers \$1 to each person to tweet once
-* With analytics, retailer offers \$2 to those identified as influencers to send two tweets each
+* Without analytics, retailer offers $1 to each person to tweet once
+* With analytics, retailer offers $2 to those identified as influencers to send two tweets each
 * Non-influencer tweets are no benefit to a retailer
 * Influencer tweet leads to a 0.10% chance that a follower will buy one unit of a product
 * Influencer tweets leads to a 0.15% chance that a follower will buy one unit of a product
-* Retailer profit margin \$50 per unit, one customer can buy only one unit
+* Retailer profit margin $50 per unit, one customer can buy only one unit
 
 Calculations done in [financial_value.xlsx](https://github.com/juliaawu/mis184n-social-media-analytics/blob/master/predicting-social-influence/financial_value.xlsx)
 
-Given the above assumptions, the promotion effort would have generated \$82k in profit with no model, \$113k with the boosting model, and \$123k with a perfect model. Using analytics to predict social influence would generate a 38% lift in sales, equating to \$31k in additional profit.
+Given the above assumptions, the promotion effort would have generated $82k in profit with no model, $113k with the boosting model, and $123k with a perfect model. Using analytics to predict social influence would generate a 38% lift in sales, equating to $31k in additional profit.
