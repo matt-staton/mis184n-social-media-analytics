@@ -335,4 +335,4 @@ Next, we will format the data so that we can build a network of tweets and retwe
     network = pd.concat([pd.Series(user1, name='user1'), pd.Series(user2, name='user2'), pd.Series(tweet_type, name='tweet_type')], axis=1)
     network.to_csv('network.csv', index=False)
 
-Now we can use the csv file to produce a network graph in Gephi. Here is the [graph](https://github.com/juliaawu/mis184n-social-media-analytics/blob/master/twitter-access-and-influence/network.PNG) with a filter for degree range > 2.
+Now we can use the csv file to produce a network graph in Gephi. [Here](https://github.com/juliaawu/mis184n-social-media-analytics/blob/master/twitter-access-and-influence/network.PNG) is the graph with a filter for degree range > 2.
