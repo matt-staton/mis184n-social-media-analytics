@@ -5,85 +5,85 @@ In the following, we will develop a web crawler to fetch posts from Edmunds.com'
 
 Below is a web crawler that collects 5,000+ posts from the [Entry Level Luxury Performance Sedans](http://forums.edmunds.com/discussion/2864/general/x/entry-level-luxury-performance-sedans) forum on Edmunds.com.
 
-
-    import requests
-    import pandas as pd
-    from bs4 import BeautifulSoup
-    from pandas import DataFrame
-    import sklearn
-    from sklearn.feature_extraction.text import CountVectorizer
-    import numpy as np
-    import re
-
-
-    # Initialize dataframe and lists to store fetched posts
-    edmunds = DataFrame()
-    username = []
-    date = []
-    message = []
+```python
+import requests
+import pandas as pd
+from bs4 import BeautifulSoup
+from pandas import DataFrame
+import sklearn
+from sklearn.feature_extraction.text import CountVectorizer
+import numpy as np
+import re
 
 
-    # Crawl the forum and extract username, date, and post
-    page = 1
-    while page < 200:
-        r = requests.get('http://forums.edmunds.com/discussion/2864/general/x/entry-level-luxury-performance-sedans/p' + str(page))
-        soup = BeautifulSoup(r.text)
-        username.extend([x.get_text() for x in soup.find_all("a", attrs={"class": "Username"})])
-        date.extend([x['datetime'][:10] for x in soup.find_all("time")])
-        message.extend([x.get_text().strip() for x in soup.find_all("div", attrs={"class": "Message"})])
-        page += 1
+# Initialize dataframe and lists to store fetched posts
+edmunds = DataFrame()
+username = []
+date = []
+message = []
 
 
-    # Store data into dataframe
-    edmunds['username'] = username
-    edmunds['date'] = date
-    edmunds['message'] = message
+# Crawl the forum and extract username, date, and post
+page = 1
+while page < 200:
+	r = requests.get('http://forums.edmunds.com/discussion/2864/general/x/entry-level-luxury-performance-sedans/p' + str(page))
+	soup = BeautifulSoup(r.text)
+	username.extend([x.get_text() for x in soup.find_all("a", attrs={"class": "Username"})])
+	date.extend([x['datetime'][:10] for x in soup.find_all("time")])
+	message.extend([x.get_text().strip() for x in soup.find_all("div", attrs={"class": "Message"})])
+	page += 1
 
+
+# Store data into dataframe
+edmunds['username'] = username
+edmunds['date'] = date
+edmunds['message'] = message
+```
 ## Associations Between Car Brands
 
 To allow for a higher-level car brand analysis, we will clean the data by searching for model names and replacing them with brands.
 
-
-    # Read in lookup table of brands and models
-    brands = pd.read_csv("brand_lookup.csv")
-
-
-    # Create a dictionary to use for search and replace
-    brands_df = brands.ix[:,'Replace']
-    brands_df.index = brands.ix[:,'Search']
-    brands_dict = brands_df.to_dict()
+```python
+# Read in lookup table of brands and models
+brands = pd.read_csv("brand_lookup.csv")
 
 
-    # Replace NaN posts with an empty string
-    edmunds['message'] = edmunds['message'].replace(np.nan,' ', regex=True)
+# Create a dictionary to use for search and replace
+brands_df = brands.ix[:,'Replace']
+brands_df.index = brands.ix[:,'Search']
+brands_dict = brands_df.to_dict()
 
 
-    # Lowercase all text
-    edmunds['message'] = edmunds['message'].str.lower()
+# Replace NaN posts with an empty string
+edmunds['message'] = edmunds['message'].replace(np.nan,' ', regex=True)
 
 
-    # Find models and replace with brands
-    pattern = re.compile(r'\b(' + '|'.join(brands_dict.keys()) + r')\b')
-    for index, message in enumerate(edmunds['message']):
-        edmunds['message'][index] = pattern.sub(lambda x: brands_dict[x.group()], message)
+# Lowercase all text
+edmunds['message'] = edmunds['message'].str.lower()
 
 
-    # Create binary document term matrix
-    countvec = CountVectorizer(binary=True, stop_words='english')
-    DTM = pd.DataFrame(countvec.fit_transform(edmunds['message']).toarray(), columns=countvec.get_feature_names())
+# Find models and replace with brands
+pattern = re.compile(r'\b(' + '|'.join(brands_dict.keys()) + r')\b')
+for index, message in enumerate(edmunds['message']):
+	edmunds['message'][index] = pattern.sub(lambda x: brands_dict[x.group()], message)
 
 
-    # Sum the DTM to get word counts
-    word_counts = DTM.sum()
+# Create binary document term matrix
+countvec = CountVectorizer(binary=True, stop_words='english')
+DTM = pd.DataFrame(countvec.fit_transform(edmunds['message']).toarray(), columns=countvec.get_feature_names())
 
 
-    # Sort word counts descending
-    word_counts.sort(ascending=0)
+# Sum the DTM to get word counts
+word_counts = DTM.sum()
 
 
-    # View word counts to identify top brands
-    word_counts.head(20)
+# Sort word counts descending
+word_counts.sort(ascending=0)
 
+
+# View word counts to identify top brands
+word_counts.head(20)
+```
 
 
 
@@ -111,47 +111,47 @@ To allow for a higher-level car brand analysis, we will clean the data by search
 
 
 
+```python
+# Initialize list of top 10 brands and create top brands DTM
+top10_brands = ['bmw', 'acura', 'infiniti', 'lexus', 'audi', 'cadillac', 'honda', 'nissan', 'toyota', 'mercedes']
+top10_DTM = DTM.ix[:, top10_brands]
 
-    # Initialize list of top 10 brands and create top brands DTM
-    top10_brands = ['bmw', 'acura', 'infiniti', 'lexus', 'audi', 'cadillac', 'honda', 'nissan', 'toyota', 'mercedes']
-    top10_DTM = DTM.ix[:, top10_brands]
 
-
-    # Create dictionary of brand counts
-    brand_count = {}
-    for brand in top10_brands:
-        brand_count[brand] = word_counts.ix[brand]
-
+# Create dictionary of brand counts
+brand_count = {}
+for brand in top10_brands:
+	brand_count[brand] = word_counts.ix[brand]
+```
 We will use lift ratios as a measure of brand association. Lift ratios tell us whether words appear together by chance or due to association. The formula for calculating lift is P(A & B) = P(A & B) / (P(A) * P(B)), where P() indicates the probability of. A lift ratio of < 1 indicates that the words are less likely to appear together than by chance, while a lift ratio of > 1 indicates association between two words. The higher the number, the greater the association.
 
-
-    # Initialize lists to hold combination of brands and their lift scores
-    combo_list = []
-    lift_list = []
-
-
-    # Loop through top 10 car brands and calculate lift scores for each brand combination
-    for i in xrange(0, 10):
-        for j in xrange(1, 10):
-            if j > i:
-                combo_list.append(top10_brands[i] + " & " + top10_brands[j])
-                combo_count = sum(top10_DTM[top10_brands[i]] + top10_DTM[top10_brands[j]] == 2)
-                n = len(top10_DTM)
-                lift = float(combo_count * n) / (brand_count[top10_brands[i]] * brand_count[top10_brands[j]])
-                lift_list.append(lift)
+```python
+# Initialize lists to hold combination of brands and their lift scores
+combo_list = []
+lift_list = []
 
 
-    # Store into dataframe
-    lift_df = DataFrame()
-    lift_df['brands'] = combo_list
-    lift_df['brand1'] = [x[0:re.search('&', x).start()-1] for x in lift_df['brands']]
-    lift_df['brand2'] = [x[re.search('&', x).start()+2:] for x in lift_df['brands']]
-    lift_df['lift'] = lift_list
+# Loop through top 10 car brands and calculate lift scores for each brand combination
+for i in xrange(0, 10):
+	for j in xrange(1, 10):
+		if j > i:
+			combo_list.append(top10_brands[i] + " & " + top10_brands[j])
+			combo_count = sum(top10_DTM[top10_brands[i]] + top10_DTM[top10_brands[j]] == 2)
+			n = len(top10_DTM)
+			lift = float(combo_count * n) / (brand_count[top10_brands[i]] * brand_count[top10_brands[j]])
+			lift_list.append(lift)
 
 
-    # View lift scores
-    lift_df
+# Store into dataframe
+lift_df = DataFrame()
+lift_df['brands'] = combo_list
+lift_df['brand1'] = [x[0:re.search('&', x).start()-1] for x in lift_df['brands']]
+lift_df['brand2'] = [x[re.search('&', x).start()+2:] for x in lift_df['brands']]
+lift_df['lift'] = lift_list
 
+
+# View lift scores
+lift_df
+```
 
 
 
@@ -488,10 +488,10 @@ We will use lift ratios as a measure of brand association. Lift ratios tell us w
 
 
 
-
-    # Save to csv
-    lift_df.to_csv(r'lift.csv', index=False)
-
+```python
+# Save to csv
+lift_df.to_csv(r'lift.csv', index=False)
+```
 To visualize the data, we can make a network diagram using a tool like [Gephi](https://gephi.org/) or a multi-dimensional scaling map using [XLSTAT](https://www.xlstat.com/en/download) with Excel.
 
 * The [first network graph](https://github.com/juliaawu/mis184n-social-media-analytics/blob/master/web-crawling-and-brand-associations/network_graph.PNG) doesn't tell us much. All brands are talked about in association with each other with lift ratios > 1. However, [filtering the graph by lifts > 3](https://github.com/juliaawu/mis184n-social-media-analytics/blob/master/web-crawling-and-brand-associations/network_graph_filtered.PNG) reveals some interesting brand associations. Nissan, Honda, and Toyota are all linked, which indicates that consumers may find these brands similar. This makes sense because the brands are all economical. We also see Mercedes linked to Audi, Cadillac, and Lexus, which suggest that consumers may view Mercedes to be a point of comparison for luxury vehicles. Acura is linked to Honda, Cadillac, and Lexus in a similar way, which implies that it could be a focal point for mid-range cars. BMW and Infiniti have no connections with lift > 3. This might be because they are more unqiue in nature. Acura, Cadillac, and Audi also seem to be bridges in terms of association between a lower-end to higher-end vehicles.
@@ -504,38 +504,38 @@ This type of analysis would be useful for car companies in evaluating consumer p
 ##Associations Between Car Brands and Attributes
 Now we will conduct a similar analysis between the top 5 car brands and car attributes to identify which attributes are most commonly talked about for each brand.
 
-
-    # Read in lookup table of attributes and their synonyms
-    attributes = pd.read_csv("attribute_lookup.csv")
-
-
-    # Create a dictionary to use for search and replace
-    attributes_df = attributes.ix[:,'Replace']
-    attributes_df.index = attributes.ix[:,'Search']
-    attributes_dict = attributes_df.to_dict()
+```python
+# Read in lookup table of attributes and their synonyms
+attributes = pd.read_csv("attribute_lookup.csv")
 
 
-    # Find attribute synonyms and replace with attribute
-    pattern = re.compile(r'\b(' + '|'.join(attributes_dict.keys()) + r')\b')
-    for index, message in enumerate(edmunds['message']):
-        edmunds['message'][index] = pattern.sub(lambda x: attributes_dict[x.group()], message)
+# Create a dictionary to use for search and replace
+attributes_df = attributes.ix[:,'Replace']
+attributes_df.index = attributes.ix[:,'Search']
+attributes_dict = attributes_df.to_dict()
 
 
-    # Create binary document term matrix
-    DTM2 = pd.DataFrame(countvec.fit_transform(edmunds['message']).toarray(), columns=countvec.get_feature_names())
+# Find attribute synonyms and replace with attribute
+pattern = re.compile(r'\b(' + '|'.join(attributes_dict.keys()) + r')\b')
+for index, message in enumerate(edmunds['message']):
+	edmunds['message'][index] = pattern.sub(lambda x: attributes_dict[x.group()], message)
 
 
-    # Sum the DTM to get word counts
-    word_counts2 = DTM2.sum()
+# Create binary document term matrix
+DTM2 = pd.DataFrame(countvec.fit_transform(edmunds['message']).toarray(), columns=countvec.get_feature_names())
 
 
-    # Sort word counts descending
-    word_counts2.sort(ascending=0)
+# Sum the DTM to get word counts
+word_counts2 = DTM2.sum()
 
 
-    # View word counts to identify top attributes
-    word_counts2.head(25)
+# Sort word counts descending
+word_counts2.sort(ascending=0)
 
+
+# View word counts to identify top attributes
+word_counts2.head(25)
+```
 
 
 
@@ -570,49 +570,49 @@ Now we will conduct a similar analysis between the top 5 car brands and car attr
 
 The top 5 most talked about attributes are performance, economy, engine, design, and aspirational.
 
-
-    # Initialize list of top attributes and intitalize variable of top 5 brands
-    atts = [x for x in attributes['Replace'].unique() if x in DTM2.columns]
-    top5_brands = top10_brands[0:5]
-
-
-    # Create top 5 brands and attributes DTMs
-    top5_brands_DTM = DTM.ix[:,top10_brands[0:5]]
-    atts_DTM = DTM.ix[:,atts]
+```python
+# Initialize list of top attributes and intitalize variable of top 5 brands
+atts = [x for x in attributes['Replace'].unique() if x in DTM2.columns]
+top5_brands = top10_brands[0:5]
 
 
-    # Create dictionary of attribute counts
-    att_count = {}
-    for att in atts:
-        att_count[att] = word_counts2.ix[att]
+# Create top 5 brands and attributes DTMs
+top5_brands_DTM = DTM.ix[:,top10_brands[0:5]]
+atts_DTM = DTM.ix[:,atts]
 
 
-    # Initialize lists to hold combination of brands and attributes and their lift scores
-    combo_list2 = []
-    lift_list2 = []
+# Create dictionary of attribute counts
+att_count = {}
+for att in atts:
+	att_count[att] = word_counts2.ix[att]
 
 
-    # Loop through top 5 car brands and attributes and calculate lift scores for each brand + attribute combination
-    for i in xrange(0, 5):
-        for j in xrange(0, len(atts)):
-            combo_list2.append(top5_brands[i] + " & " + atts[j])
-            combo_count = sum(top5_brands_DTM[top5_brands[i]] + atts_DTM[atts[j]] == 2)
-            n = len(top5_brands_DTM)
-            lift = float(combo_count * n) / (brand_count[top5_brands[i]] * att_count[atts[j]])
-            lift_list2.append(lift)
+# Initialize lists to hold combination of brands and attributes and their lift scores
+combo_list2 = []
+lift_list2 = []
 
 
-    # Store into dataframe
-    lift_df2 = DataFrame()
-    lift_df2['combo'] = combo_list2
-    lift_df2['brand'] = [x[0:re.search('&', x).start()-1] for x in lift_df2['combo']]
-    lift_df2['attribute'] = [x[re.search('&', x).start()+2:] for x in lift_df2['combo']]
-    lift_df2['lift'] = lift_list2
+# Loop through top 5 car brands and attributes and calculate lift scores for each brand + attribute combination
+for i in xrange(0, 5):
+	for j in xrange(0, len(atts)):
+		combo_list2.append(top5_brands[i] + " & " + atts[j])
+		combo_count = sum(top5_brands_DTM[top5_brands[i]] + atts_DTM[atts[j]] == 2)
+		n = len(top5_brands_DTM)
+		lift = float(combo_count * n) / (brand_count[top5_brands[i]] * att_count[atts[j]])
+		lift_list2.append(lift)
 
 
-    # View lift scores
-    lift_df2.sort(columns=['brand','lift'], ascending=False)
+# Store into dataframe
+lift_df2 = DataFrame()
+lift_df2['combo'] = combo_list2
+lift_df2['brand'] = [x[0:re.search('&', x).start()-1] for x in lift_df2['combo']]
+lift_df2['attribute'] = [x[re.search('&', x).start()+2:] for x in lift_df2['combo']]
+lift_df2['lift'] = lift_list2
 
+
+# View lift scores
+lift_df2.sort(columns=['brand','lift'], ascending=False)
+```
 
 
 
@@ -1062,10 +1062,10 @@ The top 5 most talked about attributes are performance, economy, engine, design,
 
 
 
-
-    # Filter by brand
-    lift_df2[lift_df2['brand'] == 'audi'].sort(columns=['lift'], ascending=False)
-
+```python
+# Filter by brand
+lift_df2[lift_df2['brand'] == 'audi'].sort(columns=['lift'], ascending=False)
+```
 
 
 
@@ -1271,9 +1271,9 @@ The top 5 most talked about attributes are performance, economy, engine, design,
 
 The brand + attribute lift dataframe is sorted by brand and lift so that we can see each brand with their top attributes listed first. For example, we see that Lexus is most talked about for its hybrid, service and reliability, Acura is mentioned for its price and interior, and Audi is known for its service.
 
-
-    lift_df2[lift_df2['attribute'] == "aspirational"].sort(columns="lift", ascending=False)
-
+```python
+lift_df2[lift_df2['attribute'] == "aspirational"].sort(columns="lift", ascending=False)
+```
 
 
 
