@@ -7,94 +7,94 @@ The dataset comprises a standard, pair-wise preference learning task. Each datap
 
 The goal of the challenge is to train a machine learning model which, for a pair of individuals, predicts the human judgement on who is more influential with high accuracy. Then, using this model we will quantify the value of influence and explore how a business can identify and leverage influencers.
 
-
-    import pandas as pd
-    import sklearn
-    from sklearn.cross_validation import train_test_split
-    from sklearn import cross_validation
-    from pandas import DataFrame
-    import numpy as np
-    from sklearn import linear_model
-    from sklearn.preprocessing import StandardScaler
-    from numpy import mean
-    from sklearn.ensemble import GradientBoostingClassifier
-    from sklearn.ensemble import RandomForestClassifier
-    from sklearn.neighbors import KNeighborsClassifier
-    from sklearn.metrics import accuracy_score
-
-
-    # Read in data
-    data = pd.read_csv("train.csv")
+```python
+import pandas as pd
+import sklearn
+from sklearn.cross_validation import train_test_split
+from sklearn import cross_validation
+from pandas import DataFrame
+import numpy as np
+from sklearn import linear_model
+from sklearn.preprocessing import StandardScaler
+from numpy import mean
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score
 
 
-    # Log function
-    def transform_features(x):
-        return np.log(1+x)
+# Read in data
+data = pd.read_csv("train.csv")
 
 
-    # Split data into train and test 70/30 split
-    X_train, X_test, y_train, y_test = train_test_split(data.ix[:,1:], data.ix[:,0], test_size=0.3, random_state=1)
+# Log function
+def transform_features(x):
+	return np.log(1+x)
 
 
-    # Log transform features
-    X_train = transform_features(X_train)
-    X_test = transform_features(X_test)
+# Split data into train and test 70/30 split
+X_train, X_test, y_train, y_test = train_test_split(data.ix[:,1:], data.ix[:,0], test_size=0.3, random_state=1)
 
 
-    # Initialize scaler with train
-    scaler = StandardScaler()
-    scaler.fit(X_train)
+# Log transform features
+X_train = transform_features(X_train)
+X_test = transform_features(X_test)
 
 
-
-
-    StandardScaler(copy=True, with_mean=True, with_std=True)
+# Initialize scaler with train
+scaler = StandardScaler()
+scaler.fit(X_train)
 
 
 
 
-    # Scale train and test
-    X_train_scaled = scaler.transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
+StandardScaler(copy=True, with_mean=True, with_std=True)
 
 
-    # Separate userA and userB data
-    X_train_A = X_train_scaled[:,:11]
-    X_train_B = X_train_scaled[:,11:]
-    X_test_A = X_test_scaled[:,:11]
-    X_test_B = X_test_scaled[:,11:]
 
 
-    # Calculate differences userA - userB for each feature
-    X_train_new = X_train_A - X_train_B
-    X_test_new = X_test_A - X_test_B
+# Scale train and test
+X_train_scaled = scaler.transform(X_train)
+X_test_scaled = scaler.transform(X_test)
 
 
-    # Check for multicollinearity
-    #DataFrame(X_train_new).corr
+# Separate userA and userB data
+X_train_A = X_train_scaled[:,:11]
+X_train_B = X_train_scaled[:,11:]
+X_test_A = X_test_scaled[:,:11]
+X_test_B = X_test_scaled[:,11:]
 
 
-    # Initialize models
-    models = {'logreg': linear_model.LogisticRegression(C=1.0),
-              'boost': GradientBoostingClassifier(n_estimators=100, learning_rate=0.04, random_state=1),
-              'rf': RandomForestClassifier(n_estimators=10),
-              'knn': KNeighborsClassifier(n_neighbors=5)}
+# Calculate differences userA - userB for each feature
+X_train_new = X_train_A - X_train_B
+X_test_new = X_test_A - X_test_B
 
 
-    # Create empty datframe for results
-    results_df = DataFrame(columns=['Model', 'Accuracy'])
+# Check for multicollinearity
+#DataFrame(X_train_new).corr
 
 
-    # Loop through models and append accuracy scores to results_df
-    for k, v in models.iteritems():
-        clf = v
-        clf.fit(X_train_new, y_train)
-        pred = clf.predict(X_test_new)
-        results_df = results_df.append({'Model': k, 'Accuracy': accuracy_score(pred, y_test)}, ignore_index=True)
+# Initialize models
+models = {'logreg': linear_model.LogisticRegression(C=1.0),
+		  'boost': GradientBoostingClassifier(n_estimators=100, learning_rate=0.04, random_state=1),
+		  'rf': RandomForestClassifier(n_estimators=10),
+		  'knn': KNeighborsClassifier(n_neighbors=5)}
 
 
-    results_df
+# Create empty dataframe for results
+results_df = DataFrame(columns=['Model', 'Accuracy'])
 
+
+# Loop through models and append accuracy scores to results_df
+for k, v in models.iteritems():
+	clf = v
+	clf.fit(X_train_new, y_train)
+	pred = clf.predict(X_test_new)
+	results_df = results_df.append({'Model': k, 'Accuracy': accuracy_score(pred, y_test)}, ignore_index=True)
+
+
+results_df
+```
 
 
 
@@ -136,22 +136,22 @@ The goal of the challenge is to train a machine learning model which, for a pair
 
 Accuracy scores for the 4 models are relatively close. Boosting and logistic regression tie for first with accuracy scores of ~75.58%. A pairwise correlation table of the predictor variables showed multicollinearity between several variables, so we will move forward with the boosting model as it has built-in feature selection.
 
-
-    # Confusion matrix function
-    def accuracy(pred, actual):
-        print 'Accuracy: %s' %(np.mean(pred == actual))
-        print(pd.crosstab(actual, pred, rownames=['True'], colnames=['Predicted'], margins=True))
-
-
-    # Run boosting again for confusion matrix
-    boost = GradientBoostingClassifier(n_estimators=100, learning_rate=0.04, random_state=1)
-    boost.fit(X_train_new, y_train)
-    boost_pred = clf.predict(X_test_new)
+```python
+# Confusion matrix function
+def accuracy(pred, actual):
+	print 'Accuracy: %s' %(np.mean(pred == actual))
+	print(pd.crosstab(actual, pred, rownames=['True'], colnames=['Predicted'], margins=True))
 
 
-    # Print confusion matrix
-    accuracy(boost_pred, y_test)
+# Run boosting again for confusion matrix
+boost = GradientBoostingClassifier(n_estimators=100, learning_rate=0.04, random_state=1)
+boost.fit(X_train_new, y_train)
+boost_pred = clf.predict(X_test_new)
 
+
+# Print confusion matrix
+accuracy(boost_pred, y_test)
+```
     Accuracy: 0.755757575758
     Predicted    0    1   All
     True                     
@@ -160,21 +160,21 @@ Accuracy scores for the 4 models are relatively close. Boosting and logistic reg
     All        800  850  1650
     
 
-
-    # Get new feature names
-    col_list = []
-    for i in list(data.ix[:,1:12].columns.values):
-        col_list.append("A-B_"+i[2:])
-
-
-    # Create feature importance dataframe
-    features_df = DataFrame(boost.feature_importances_, index=col_list)
-    features_df.columns = ['Importance']
+```python
+# Get new feature names
+col_list = []
+for i in list(data.ix[:,1:12].columns.values):
+	col_list.append("A-B_"+i[2:])
 
 
-    # Sort dataframe descending by importance
-    features_df.sort(['Importance'], ascending=0)
+# Create feature importance dataframe
+features_df = DataFrame(boost.feature_importances_, index=col_list)
+features_df.columns = ['Importance']
 
+
+# Sort dataframe descending by importance
+features_df.sort(['Importance'], ascending=0)
+```
 
 
 
@@ -239,19 +239,19 @@ Accuracy scores for the 4 models are relatively close. Boosting and logistic reg
 
 Above we have feature importance from the boosting model. Diff in listed_count is the most important predictor of social influence followed by diff in follower_count, diff in network_feature_1, and diff in network_feature_2.
 
-
-    # Get followers counts for financial value analysis
-    fv_df = data.ix[y_test.index,[1,12]]
-
-
-    # Add actual and predicted values
-    fv_df['Actual'] = y_test
-    fv_df['Predicted'] = boost_pred
+```python
+# Get followers counts for financial value analysis
+fv_df = data.ix[y_test.index,[1,12]]
 
 
-    # Export to csv for analysis
-    fv_df.to_csv('financial_value.csv')
+# Add actual and predicted values
+fv_df['Actual'] = y_test
+fv_df['Predicted'] = boost_pred
 
+
+# Export to csv for analysis
+fv_df.to_csv('financial_value.csv')
+```
 Next, we will calculate the financial value of the model, which would be the lift in profits from using analytics versus not.
 
 ####Assume a retailer wants influencers to tweet its promotion for a product:
